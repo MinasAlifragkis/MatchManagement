@@ -53,3 +53,6 @@ API documentation and interaction are facilitated through Swagger. After running
 - AutoMapper
 - Docker (for containerization)
 - SQL Server (for database)
+
+## Future Work
+- **Add Test Project**: Develop a test project to cover unit tests, integration tests, and end-to-end tests for ensuring the reliability and correctness of the API functionality. Implementing test automation will contribute to maintaining code quality and facilitating future development and enhancements.
