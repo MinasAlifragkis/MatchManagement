@@ -9,11 +9,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using Serilog.Sinks.Elasticsearch;
+using Serilog;
 using Services.Interfaces.Services;
 using Services.Services;
 using System;
 using System.IO;
 using System.Reflection;
+using Serilog.Exceptions;
 
 namespace API
 {
@@ -61,6 +64,7 @@ namespace API
                 c.AddProfile<MappingProfiles>();
             });
             ConfigureScopedServices(services);
+            ConfigureLogging();
         }
 
         private void ConfigureScopedServices(IServiceCollection services)
@@ -92,6 +96,37 @@ namespace API
 
             app.UseSwagger();
             app.UseSwaggerUI();
+        }
+
+        private void ConfigureLogging()
+        {
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environment}.json", optional: true)
+                .Build();
+
+            Log.Logger = new LoggerConfiguration()
+                .Enrich.FromLogContext()
+                .Enrich.WithExceptionDetails()
+                .WriteTo.Debug()
+                .WriteTo.Console()
+                .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
+                .Enrich.WithProperty("Environment", environment)
+                .ReadFrom.Configuration(configuration)
+                .CreateLogger();
+        }
+
+        ElasticsearchSinkOptions ConfigureElasticSink(IConfigurationRoot configuration, string environment)
+        {
+            return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Uri"]))
+            {
+                AutoRegisterTemplate = true,
+                IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment.ToLower()}-{DateTime.UtcNow:yyyy-mm-dd}",
+                NumberOfReplicas = 1,
+                NumberOfShards = 2,
+            };
         }
     }
 }

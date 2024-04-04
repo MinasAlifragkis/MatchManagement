@@ -2,32 +2,72 @@ version: '3.4'
 
 name: match-management
 
-networks:
-  match-management:
-
 services:
 
   db:
     image: "mcr.microsoft.com/mssql/server:2022-latest"
     container_name: database
+    profiles: [docker-api]
     environment:
       SA_PASSWORD: "123456q!"
       ACCEPT_EULA: "Y"
     ports:
         - "1444:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
     networks:
        - match-management
 
   api:
     image: ${DOCKER_REGISTRY-}api
+    profiles: [docker-api]
     build:
       context: .
       dockerfile: API/Dockerfile
     depends_on:
       - db
+      - elasticsearch
     environment:
       DB_HOST: db
       DB_NAME: MatchManagement
       DB_SA_PASSWORD: "123456q!"
     networks:
        - match-management
+       - elastic
+
+  elasticsearch:
+    container_name: els
+    profiles: [docker-api, iisexplorer-api]
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    ports:
+      - 9200:9200
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - xpack.security.enabled=false #because it is a local env
+      - discovery.type=single-node 
+    networks:
+       - elastic
+
+  kibana:  
+    container_name: kibana
+    profiles: [docker-api, iisexplorer-api]
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    environment:
+       # - ELASTICSEARCH_URL=http://localhost:9200
+       ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    networks:
+       - elastic
+
+networks:
+  match-management:
+  elastic:
+    driver: bridge
+
+volumes:
+  elasticsearch-data:
+  sql-data:
