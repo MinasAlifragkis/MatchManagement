@@ -1,0 +1,31 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeProfile": {
+        "includes": [
+          "docker-api"
+        ]
+      }
+    },
+    "Docker (All)": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeProfile": {
+        "includes": [
+          "docker-api"
+        ]
+      }
+    },
+    "Docker (Els-Kibana)": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeProfile": {
+        "includes": [
+          "iisexplorer-api"
+        ]
+      }
+    }
+  }
+}
