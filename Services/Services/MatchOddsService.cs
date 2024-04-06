@@ -3,6 +3,7 @@ using Core.Interfaces.Data;
 using Core.Models.DTO;
 using Core.Models.Entities;
 using Core.Models.Enums;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Services.Interfaces.Services;
 using System;
@@ -13,15 +14,11 @@ namespace Services.Services
     public class MatchOddsService : BaseService<MatchOdds, MatchOddsDTO>, IMatchOddsService
     {
         private readonly IMatchRepository _matchRepository;
-        private readonly IMapper _mapper;
-        private readonly IMatchOddsRepository _matchOddsRepository;
         private readonly ILogger _logger;
 
-        public MatchOddsService(IMatchRepository matchRepository, IMapper mapper, IMatchOddsRepository repository, ILogger<MatchOddsService> logger) : base(mapper, repository, logger)
+        public MatchOddsService(IMatchRepository matchRepository, IMapper mapper, IMatchOddsRepository repository, IDistributedCache redisCache, ILogger<MatchOddsService> logger) : base(mapper, repository, redisCache, logger)
         {
             _matchRepository = matchRepository;
-            _mapper = mapper;
-            _matchOddsRepository = repository;
             _logger = logger;
         }
 

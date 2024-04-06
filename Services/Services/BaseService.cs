@@ -3,10 +3,12 @@ using Core.Interfaces.Data;
 using Core.Models.DTO;
 using Core.Models.Entities;
 using Core.Models.Enums;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Services.Interfaces.Services;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services.Services
@@ -15,13 +17,17 @@ namespace Services.Services
     {
         private readonly IMapper _mapper;
         private readonly IBaseRepository<TEntity> _repository;
+        private readonly IDistributedCache _redisCache;
         private readonly ILogger<BaseService<TEntity, TEntityDTO>> _logger;
+        private readonly string redisPerfix;
 
-        public BaseService(IMapper mapper, IBaseRepository<TEntity> repository, ILogger<BaseService<TEntity, TEntityDTO>> logger)
+        public BaseService(IMapper mapper, IBaseRepository<TEntity> repository, IDistributedCache redisCache, ILogger<BaseService<TEntity, TEntityDTO>> logger)
         {
             _mapper = mapper;
             _repository = repository;
+            _redisCache = redisCache ?? throw new ArgumentNullException(nameof(redisCache));
             _logger = logger;
+            redisPerfix = typeof(TEntity).Name.ToLower();
         }
 
         public virtual async Task<ResponseDTO<TEntityDTO>> AddAsync(TEntityDTO entityDTO)
@@ -32,6 +38,7 @@ namespace Services.Services
                 var entityToAdd = _mapper.Map<TEntity>(entityDTO);
                 var entityAdded = await _repository.CreateAsync(entityToAdd);
                 var entityResult = _mapper.Map<TEntityDTO>(entityAdded);
+                await _redisCache.SetStringAsync($"{redisPerfix}:{entityResult.ID}", JsonSerializer.Serialize(entityResult));
                 response.Entities.Add(entityResult);
             }
             catch (Exception ex)
@@ -75,19 +82,30 @@ namespace Services.Services
             var response = new ResponseDTO<TEntityDTO>();
             try
             {
-                var entity = await _repository.GetByIdAsync(Id);
-                if (entity == null)
-                {
-                    response.Error = new ErrorDTO
-                    {
-                        ErrorCode = ErrorCode.EntityNotfound
-                    };
-                }
+                TEntityDTO entityDTO = null;
+                var tEntityDTO = await _redisCache.GetStringAsync($"{redisPerfix}:{Id}");
+                if (!String.IsNullOrEmpty(tEntityDTO))
+                    entityDTO = JsonSerializer.Deserialize<TEntityDTO>(tEntityDTO);
                 else
                 {
-                    var entityResult = _mapper.Map<TEntityDTO>(entity);
-                    response.Entities.Add(entityResult);
+                    var entity = await _repository.GetByIdAsync(Id);
+                    if (entity == null)
+                    {
+                        response.Error = new ErrorDTO
+                        {
+                            ErrorCode = ErrorCode.EntityNotfound
+                        };
+                    }
+                    else
+                    {
+                        entityDTO = _mapper.Map<TEntityDTO>(entity);
+                        await _redisCache.SetStringAsync($"{redisPerfix}:{Id}", JsonSerializer.Serialize(entityDTO));
+                        
+                    }
                 }
+                if(entityDTO is not null)
+                    response.Entities.Add(entityDTO);
+
             }
             catch (Exception ex)
             {
@@ -119,6 +137,7 @@ namespace Services.Services
                     entity = _mapper.Map<TEntity>(entityDTO);
                     var entityUpdated = await _repository.UpdateAsync(entity);
                     var entityResponse = _mapper.Map<TEntityDTO>(entityUpdated);
+                    await _redisCache.SetStringAsync($"{redisPerfix}:{Id}", JsonSerializer.Serialize(entityResponse));
                     response.Entities.Add(entityResponse);
                 }
             }
@@ -150,6 +169,7 @@ namespace Services.Services
                 else
                 {
                     await _repository.DeleteByIdAsync(Id);
+                    await _redisCache.RemoveAsync($"{redisPerfix}:{Id}");
                 }
             }
             catch (Exception ex)

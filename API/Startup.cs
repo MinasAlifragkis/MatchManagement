@@ -64,7 +64,15 @@ namespace API
                 c.AddProfile<MappingProfiles>();
             });
             ConfigureScopedServices(services);
-            ConfigureLogging();
+
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environment}.json", optional: true)
+                .Build();
+            
+            ConfigureLogging(configuration, environment);
+            ConfigureRedis(services, configuration, environment);
         }
 
         private void ConfigureScopedServices(IServiceCollection services)
@@ -98,22 +106,15 @@ namespace API
             app.UseSwaggerUI();
         }
 
-        private void ConfigureLogging()
+        private void ConfigureLogging(IConfigurationRoot configuration, string env)
         {
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{environment}.json", optional: true)
-                .Build();
-
             Log.Logger = new LoggerConfiguration()
                 .Enrich.FromLogContext()
                 .Enrich.WithExceptionDetails()
                 .WriteTo.Debug()
                 .WriteTo.Console()
-                .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
-                .Enrich.WithProperty("Environment", environment)
+                .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, env))
+                .Enrich.WithProperty("Environment", env)
                 .ReadFrom.Configuration(configuration)
                 .CreateLogger();
         }
@@ -123,10 +124,23 @@ namespace API
             return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Uri"]))
             {
                 AutoRegisterTemplate = true,
-                IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment.ToLower()}-{DateTime.UtcNow:yyyy-mm-dd}",
+                IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment.ToLower()}-{DateTime.UtcNow:yyyy-MM-dd}",
                 NumberOfReplicas = 1,
                 NumberOfShards = 2,
             };
+        }
+
+        private void ConfigureRedis(IServiceCollection services, IConfigurationRoot configuration, string env)
+        {
+            var redisConnectionString = configuration["CacheSettings:ConnectionString"];
+            bool appRunsInDocker;
+            bool.TryParse(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), out appRunsInDocker);
+            if (appRunsInDocker)
+                redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING");
+            services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnectionString;
+                });
         }
     }
 }
