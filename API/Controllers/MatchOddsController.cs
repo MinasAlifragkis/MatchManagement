@@ -1,4 +1,5 @@
-﻿using Core.Models.DTO;
+﻿using Asp.Versioning;
+using Core.Models.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Services.Interfaces.Services;
@@ -7,7 +8,8 @@ using System.Threading.Tasks;
 namespace API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [ApiVersion("1.0")]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class MatchOddsController : BaseController<MatchOddsDTO>
     {
         public MatchOddsController(IMatchOddsService matchOddsService, ILogger<MatchOddsController> logger) : base(matchOddsService, logger)

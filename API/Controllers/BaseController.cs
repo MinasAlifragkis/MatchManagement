@@ -1,4 +1,5 @@
-﻿using Core.Models.DTO;
+﻿using Asp.Versioning;
+using Core.Models.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -8,7 +9,8 @@ using System.Threading.Tasks;
 namespace API.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [ApiVersion("1.0")]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class BaseController<T> : ControllerBase where T : BaseDTO
     {
         private readonly IBaseService<T> _baseService;
@@ -53,7 +55,7 @@ namespace API.Controllers
         /// </summary>
         /// <param name="Id"></param>
         /// <returns>The requested item</returns>
-        [HttpGet("/api/[controller]/{Id}")]
+        [HttpGet("/api/v{v:apiVersion}/[controller]/{Id}")]
         public virtual async Task<IActionResult> GetByIdAsync([FromRoute]long Id)
         {
             _logger.LogDebug($"GetById => Id {Id}");
@@ -65,7 +67,7 @@ namespace API.Controllers
                 return BadRequest(result);
         }
 
-        [HttpPut("/api/[controller]/{Id}")]
+        [HttpPut("/api/v{v:apiVersion}/[controller]/{Id}")]
         public virtual async Task<IActionResult> UpdateAsync([FromRoute] long Id, [FromBody] T entity)
         {
             _logger.LogDebug($"Update => received Id/entity {Id}/{JsonConvert.SerializeObject(entity)}");
@@ -82,7 +84,7 @@ namespace API.Controllers
         /// </summary>
         /// <param name="Id"></param>
         /// <returns></returns>
-        [HttpDelete("/api/[controller]/{Id}")]
+        [HttpDelete("/api/v{v:apiVersion}/[controller]/{Id}")]
         public virtual async Task<IActionResult> DeleteByIdAsync([FromRoute] long Id)
         {
             _logger.LogDebug($"DeleteById => Id {Id}");

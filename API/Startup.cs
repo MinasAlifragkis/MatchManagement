@@ -17,6 +17,11 @@ using System;
 using System.IO;
 using System.Reflection;
 using Serilog.Exceptions;
+using Asp.Versioning;
+using API.Configuration;
+using Microsoft.Extensions.Options;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Asp.Versioning.ApiExplorer;
 
 namespace API
 {
@@ -52,11 +57,20 @@ namespace API
             services.AddSwaggerGen(options =>
             {
                 options.IncludeXmlComments(xmlPath);
-                options.SwaggerDoc("v1", new OpenApiInfo
-                {
-                    Version = "v1",
-                    Title = "Match Management"
-                });
+            });
+
+            services.AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = new ApiVersion(1);
+                options.ReportApiVersions = true;
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ApiVersionReader = ApiVersionReader.Combine(
+                    new UrlSegmentApiVersionReader(),
+                    new HeaderApiVersionReader("X-Api-Version"));
+            }).AddApiExplorer(options =>
+            {
+                options.GroupNameFormat = "'v'V";
+                options.SubstituteApiVersionInUrl = true;
             });
 
             services.AddAutoMapper(c =>
@@ -64,6 +78,7 @@ namespace API
                 c.AddProfile<MappingProfiles>();
             });
             ConfigureScopedServices(services);
+            ConfigureTransientServices(services);
 
             var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             var configuration = new ConfigurationBuilder()
@@ -83,8 +98,13 @@ namespace API
             services.AddScoped<IMatchOddsService, MatchOddsService>();
         }
 
+        private void ConfigureTransientServices(IServiceCollection services)
+        {
+            services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
+        }
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)
         {
             if (env.IsDevelopment())
             {
@@ -103,7 +123,14 @@ namespace API
             });
 
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.UseSwaggerUI(options =>
+            {
+                foreach (var description in provider.ApiVersionDescriptions)
+                {
+                    options.SwaggerEndpoint(
+                        $"/swagger/{description.GroupName}/swagger.json", description.GroupName.ToUpperInvariant());
+                }
+            });
         }
 
         private void ConfigureLogging(IConfigurationRoot configuration, string env)
