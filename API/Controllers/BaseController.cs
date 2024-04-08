@@ -37,10 +37,10 @@ namespace API.Controllers
         /// </summary>
         /// <returns>All Items</returns>
         [HttpGet]
-        public virtual async Task<IActionResult> GetAllAsync()
+        public virtual async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 10)
         {
             _logger.LogDebug("GetAll");
-            var result = await _baseService.GetAllAsync();
+            var result = await _baseService.GetAllAsync(pageNumber, pageSize);
             _logger.LogDebug($"GetAll => received entity {JsonConvert.SerializeObject(result)}");
             if (result.Succeeded)
                 return Ok(result);

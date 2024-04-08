@@ -23,7 +23,6 @@ namespace API.Controllers
         /// 
         ///     POST /MatchOdds
         ///     {
-        ///         "id": 0,
         ///         "matchId": 1,
         ///         "specifier": "X",
         ///         "odd": 1.5

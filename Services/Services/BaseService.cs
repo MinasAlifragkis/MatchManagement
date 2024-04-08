@@ -53,17 +53,23 @@ namespace Services.Services
             return response;
         }
 
-        public virtual async Task<ResponseDTO<TEntityDTO>> GetAllAsync()
+        public virtual async Task<PagedResponseDTO<TEntityDTO>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var response = new ResponseDTO<TEntityDTO>();
+            var response = new PagedResponseDTO<TEntityDTO>();
             try
             {
-                var entities = await _repository.GetAllAsync();
+                var entities = await _repository.GetAllAsync(pageNumber, pageSize);
                 if (entities != null)
                 {
                     var entityDTOs = _mapper.Map<List<TEntityDTO>>(entities);
                     response.Entities.AddRange(entityDTOs);
                 }
+                response.PagingInfo = new PagingInfo
+                {
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalRecords = _repository.Count()
+                };
             }
             catch(Exception ex)
             {

@@ -23,7 +23,6 @@ namespace API.Controllers
         /// 
         ///     POST /Match
         ///     {
-        ///         "id": 0,
         ///         "description": "OSFP-PAO",
         ///         "matchDate": "20/02/2024",
         ///         "matchTime": "12:00",

@@ -4,6 +4,7 @@ using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Infrastructure.Repositories
@@ -26,7 +27,9 @@ namespace Infrastructure.Repositories
             return result.Entity;
         }
 
-        public virtual async Task<List<T>> GetAllAsync() => await _dbContext.Set<T>().AsNoTracking().ToListAsync();
+        public virtual async Task<List<T>> GetAllAsync(int pageNumber, int pageSize) => await _dbContext.Set<T>().Skip((pageNumber - 1) * pageSize).Take(pageSize).AsNoTracking().ToListAsync();
+
+        public int Count() => _dbContext.Set<T>().Count();
 
         public virtual async Task<T> GetByIdAsync(long Id) => await _dbContext.Set<T>().AsNoTracking().FirstOrDefaultAsync(c => c.ID == Id);
 
